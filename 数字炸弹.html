@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字炸弹游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "微软雅黑", sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow: auto;
+            transition: all 0.3s;
+        }
+        /* 爆炸特效容器 */
+        .explosion-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            pointer-events: none;
+        }
+        .explosion {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            transform: scale(0);
+            animation: explode 1.5s ease-out forwards;
+        }
+        .explosion-piece {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b00;
+            opacity: 0.9;
+            animation: pieceFly 1.2s ease-out forwards;
+        }
+        .explosion-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #ff0000;
+            box-shadow: 0 0 50px #ff9900, 0 0 100px #ff0000;
+            animation: corePulse 1s ease-out forwards;
+        }
+        /* 动画关键帧 */
+        @keyframes shake {
+            0% { transform: translate(0); }
+            20% { transform: translate(-5px, 5px); }
+            40% { transform: translate(5px, -5px); }
+            60% { transform: translate(-5px, -5px); }
+            80% { transform: translate(5px, 5px); }
+            100% { transform: translate(0); }
+        }
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(3); opacity: 0.8; }
+            100% { transform: scale(5); opacity: 0; }
+        }
+        @keyframes pieceFly {
+            0% { transform: translate(0,0) rotate(0); opacity: 1; }
+            100% { transform: translate(calc(Math.random()*300px - 150px), calc(Math.random()*300px - 150px)) rotate(360deg); opacity: 0; }
+        }
+        @keyframes corePulse {
+            0% { transform: translate(-50%,-50%) scale(0); }
+            50% { transform: translate(-50%,-50%) scale(1.5); }
+            100% { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+        }
+        /* 游戏主容器 */
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            z-index: 1000;
+            display: block; /* 默认显示 */
+        }
+        /* 爆炸后重启界面（默认隐藏） */
+        .restart-container {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 107, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            z-index: 1001;
+            display: none; /* 默认隐藏 */
+            text-align: center;
+        }
+        .restart-title {
+            font-size: 24px;
+            color: #ff6b00;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .restart-desc {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .restart-btn-big {
+            width: 100%;
+            padding: 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .restart-btn-big:hover {
+            background: #0b7dda;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+        }
+        .game-title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+        .game-title .bomb-text {
+            color: #4CAF50;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .rule {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .range-tip {
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            outline: none;
+        }
+        input:focus {
+            border-color: #4CAF50;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            position: relative;
+            z-index: 1001;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            line-height: 1.6;
+            text-align: center;
+        }
+        .error {
+            background: #ffebee;
+            color: #f44336;
+        }
+        .hint {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .success {
+            background: #fff3e0;
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .restart-btn {
+            margin-top: 15px;
+            background: #2196F3;
+        }
+        .restart-btn:hover {
+            background: #0b7dda;
+        }
+    </style>
+</head>
+<body>
+    <!-- 爆炸特效容器 -->
+    <div class="explosion-container" id="explosionContainer"></div>
+
+    <!-- 游戏主容器 -->
+    <div class="game-container" id="gameContainer">
+        <h1 class="game-title">=== <span class="bomb-text">数字炸弹</span> ===</h1>
+        <div class="rule">规则：系统已生成 1-1000 的随机数，猜数后提示「大了/小了」，猜对即爆炸！</div>
+        <div class="range-tip" id="rangeTip">当前猜测范围：1 - 1000</div>
+        <input type="text" id="guessInput" placeholder="请输入你猜的数字">
+        <button onclick="checkGuess()">提交猜测</button>
+        <div class="result" id="result"></div>
+    </div>
+
+    <!-- 爆炸后专属重启界面 -->
+    <div class="restart-container" id="restartContainer">
+        <div class="restart-title">💥 炸弹爆炸啦！</div>
+        <div class="restart-desc" id="restartDesc">
+            你猜对了数字，触发了炸弹爆炸！<br>
+            点击下方按钮重新开始挑战吧～
+        </div>
+        <button class="restart-btn-big" onclick="resetGame()">重新开始游戏</button>
+    </div>
+
+    <script>
+        // 初始化游戏数据
+        let gameData = {
+            targetNum: Math.floor(Math.random() * 1000) + 1,
+            minRange: 1,
+            maxRange: 1000,
+            guessCount: 0,
+            explosionTimer: null,
+            restartTimer: null // 新增重启界面定时器
+        };
+        // 缓存DOM元素
+        const dom = {
+            input: document.getElementById('guessInput'),
+            rangeTip: document.getElementById('rangeTip'),
+            result: document.getElementById('result'),
+            explosion: document.getElementById('explosionContainer'),
+            gameContainer: document.getElementById('gameContainer'),
+            restartContainer: document.getElementById('restartContainer'),
+            restartDesc: document.getElementById('restartDesc')
+        };
+        // 页面加载聚焦输入框
+        dom.input.focus();
+        // 回车键提交
+        dom.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkGuess();
+            }
+        });
+
+        // 核心：检查猜测结果
+        function checkGuess() {
+            const guessStr = dom.input.value.trim();
+            dom.result.className = 'result';
+            // 输入校验
+            if (!guessStr) {
+                dom.result.textContent = '❌ 输入不能为空！请输入数字';
+                dom.result.className = 'result error';
+                dom.input.value = '';
+                return;
+            }
+            const guessNum = parseInt(guessStr);
+            if (isNaN(guessNum) || guessStr !== guessNum.toString()) {
+                dom.result.textContent = '❌ 输入错误！请输入纯整数（无字母/小数点）';
+                dom.result.className = 'result error';
+                dom.input.value = '';
+                return;
+            }
+            if (guessNum < gameData.minRange || guessNum > gameData.maxRange) {
+                dom.result.textContent = `❌ 范围错误！请输入 ${gameData.minRange} - ${gameData.maxRange} 之间的数字`;
+                dom.result.className = 'result error';
+                dom.input.value = '';
+                return;
+            }
+
+            // 有效猜测，计数+1
+            gameData.guessCount++;
+            // 猜数逻辑判断
+            if (guessNum > gameData.targetNum) {
+                gameData.maxRange = guessNum - 1;
+                dom.result.textContent = `? 猜大了！下一位～\n已猜次数：${gameData.guessCount}`;
+                dom.result.className = 'result hint';
+            } else if (guessNum < gameData.targetNum) {
+                gameData.minRange = guessNum + 1;
+                dom.result.textContent = `? 猜小了！下一位～\n已猜次数：${gameData.guessCount}`;
+                dom.result.className = 'result hint';
+            } else {
+                // 猜对了，触发爆炸+准备重启界面
+                triggerExplosion();
+                dom.result.textContent = `?? 很遗憾，你爆炸了！\n目标数字：${gameData.targetNum}\n总共猜了 ${gameData.guessCount} 次！`;
+                dom.result.className = 'result success';
+                // 爆炸结束后显示重启界面（延迟2秒，等特效播放完）
+                gameData.restartTimer = setTimeout(() => {
+                    showRestartUI();
+                }, 2000);
+            }
+            // 更新范围+清空输入框+聚焦
+            dom.rangeTip.textContent = `当前猜测范围：${gameData.minRange} - ${gameData.maxRange}`;
+            dom.input.value = '';
+            dom.input.focus();
+        }
+
+        // 爆炸特效
+        function triggerExplosion() {
+            // 清除之前的定时器和特效
+            clearTimeout(gameData.explosionTimer);
+            clearTimeout(gameData.restartTimer);
+            dom.explosion.innerHTML = '';
+            dom.explosion.style.display = 'none';
+            
+            // 屏幕震动
+            const gameContainer = document.querySelector('.game-container');
+            gameContainer.style.animation = 'shake 0.8s ease-in-out forwards';
+            setTimeout(() => {
+                gameContainer.style.animation = '';
+            }, 800);
+
+            // 创建爆炸核心+碎片
+            const core = document.createElement('div');
+            core.className = 'explosion-core';
+            const explosionWrap = document.createElement('div');
+            explosionWrap.className = 'explosion';
+            explosionWrap.appendChild(core);
+            for (let i = 0; i < 20; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'explosion-piece';
+                piece.style.left = `${50 - Math.random() * 100}px`;
+                piece.style.top = `${50 - Math.random() * 100}px`;
+                piece.style.background = `rgb(255, ${Math.floor(Math.random() * 150)}, 0)`;
+                explosionWrap.appendChild(piece);
+            }
+            dom.explosion.appendChild(explosionWrap);
+            dom.explosion.style.display = 'flex';
+            
+            // 1.8秒后自动回收特效
+            gameData.explosionTimer = setTimeout(() => {
+                dom.explosion.style.display = 'none';
+                dom.explosion.innerHTML = '';
+                gameContainer.style.animation = '';
+            }, 1800);
+        }
+
+        // 显示爆炸后重启界面
+        function showRestartUI() {
+            // 隐藏游戏主界面
+            dom.gameContainer.style.display = 'none';
+            // 显示重启界面，填充结果信息
+            dom.restartDesc.innerHTML = `
+                你猜对了数字 <span style="color:#ff6b00;font-weight:bold">${gameData.targetNum}</span>，触发了炸弹爆炸！<br>
+                本次共猜测 <span style="color:#ff6b00;font-weight:bold">${gameData.guessCount}</span> 次<br>
+                点击下方按钮重新开始挑战吧～
+            `;
+            dom.restartContainer.style.display = 'block';
+        }
+
+        // 重置游戏（回到初始状态）
+        function resetGame() {
+            // 清除所有定时器
+            clearTimeout(gameData.explosionTimer);
+            clearTimeout(gameData.restartTimer);
+            // 回收特效
+            dom.explosion.style.display = 'none';
+            dom.explosion.innerHTML = '';
+            document.querySelector('.game-container').style.animation = '';
+            // 隐藏重启界面，显示游戏主界面
+            dom.restartContainer.style.display = 'none';
+            dom.gameContainer.style.display = 'block';
+            // 硬重置游戏数据
+            gameData = {
+                targetNum: Math.floor(Math.random() * 1000) + 1,
+                minRange: 1,
+                maxRange: 1000,
+                guessCount: 0,
+                explosionTimer: null,
+                restartTimer: null
+            };
+            // 重置界面显示
+            dom.rangeTip.textContent = '当前猜测范围：1 - 1000';
+            dom.result.textContent = '';
+            dom.result.className = 'result';
+            dom.input.value = '';
+            dom.input.focus();
+        }
+
+        // 页面卸载清理
+        window.addEventListener('beforeunload', () => {
+            clearTimeout(gameData.explosionTimer);
+            clearTimeout(gameData.restartTimer);
+        });
+    </script>
+</body>
+</html>
